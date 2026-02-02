@@ -582,14 +582,16 @@
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
-      canvas.width = 800;
-      canvas.height = 200;
+      // Ajusta tamanho do canvas e fonte baseado no texto
+      const baseSize = Math.max(60, 120 - text.length * 8);
+      canvas.width = Math.max(800, text.length * baseSize * 0.8);
+      canvas.height = 250;
       
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 120px Orbitron, sans-serif';
+      ctx.font = `bold ${baseSize}px Orbitron, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, canvas.width / 2, canvas.height / 2);
@@ -597,19 +599,22 @@
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const positions = [];
       
-      const scaleX = 0.5;
-      const scaleY = 0.5;
-      const offsetX = -canvas.width / 2 * scaleX;
-      const offsetY = -canvas.height / 2 * scaleY;
+      // Escala para caber na tela (~400px de largura máxima)
+      const targetWidth = 350;
+      const scale = targetWidth / canvas.width;
+      const offsetX = -canvas.width / 2 * scale;
+      const offsetY = -canvas.height / 2 * scale;
       
-      // Scan com passo 1 para maior densidade/nitidez
-      for (let y = 0; y < canvas.height; y += 1) {
-        for (let x = 0; x < canvas.width; x += 1) {
+      // Scan com passo adaptativo para manter performance
+      const step = Math.max(1, Math.floor(canvas.width / 400));
+      
+      for (let y = 0; y < canvas.height; y += step) {
+        for (let x = 0; x < canvas.width; x += step) {
           const i = (y * canvas.width + x) * 4;
           if (imageData.data[i] > 128) {
             positions.push({
-              x: x * scaleX + offsetX,
-              y: -y * scaleY - offsetY,
+              x: x * scale + offsetX,
+              y: -y * scale - offsetY,
               z: 0
             });
           }
