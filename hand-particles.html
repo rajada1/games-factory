@@ -582,14 +582,14 @@
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
-      canvas.width = 512;
-      canvas.height = 128;
+      canvas.width = 800;
+      canvas.height = 200;
       
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 75px Orbitron, sans-serif';
+      ctx.font = 'bold 120px Orbitron, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, canvas.width / 2, canvas.height / 2);
@@ -597,13 +597,14 @@
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const positions = [];
       
-      const scaleX = 0.8;
-      const scaleY = 0.8;
+      const scaleX = 0.5;
+      const scaleY = 0.5;
       const offsetX = -canvas.width / 2 * scaleX;
       const offsetY = -canvas.height / 2 * scaleY;
       
-      for (let y = 0; y < canvas.height; y += 2) {
-        for (let x = 0; x < canvas.width; x += 2) {
+      // Scan com passo 1 para maior densidade/nitidez
+      for (let y = 0; y < canvas.height; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
           const i = (y * canvas.width + x) * 4;
           if (imageData.data[i] > 128) {
             positions.push({
@@ -653,14 +654,22 @@
       
       for (let i = 0; i < count; i++) {
         if (i < textPositions.length) {
-          const idx = i % textPositions.length;
-          targetPositions[i] = { ...textPositions[idx] };
-        } else {
+          // Partículas que formam o texto - posição exata
+          targetPositions[i] = { ...textPositions[i] };
+        } else if (i < textPositions.length * 2) {
+          // Segunda camada - pequena variação para dar volume
           const idx = i % textPositions.length;
           targetPositions[i] = {
-            x: textPositions[idx].x + (Math.random() - 0.5) * 20,
-            y: textPositions[idx].y + (Math.random() - 0.5) * 20,
-            z: (Math.random() - 0.5) * 30
+            x: textPositions[idx].x + (Math.random() - 0.5) * 3,
+            y: textPositions[idx].y + (Math.random() - 0.5) * 3,
+            z: (Math.random() - 0.5) * 5
+          };
+        } else {
+          // Resto - esconde longe (fora da tela)
+          targetPositions[i] = {
+            x: (Math.random() - 0.5) * 2000,
+            y: (Math.random() - 0.5) * 2000,
+            z: -500
           };
         }
         
@@ -782,14 +791,20 @@
     }
     
     // ============== HAND DETECTION ==============
-    function countFingers(landmarks) {
-      const dominated = landmarks;
+    function countFingers(landmarks, isLeftHand) {
       let count = 0;
       
-      // Thumb (special case - horizontal)
-      if (landmarks[4].x < landmarks[3].x) count++;
+      // Thumb (special case - horizontal, depends on which hand due to mirror)
+      // Camera is mirrored, so we need to invert the logic
+      if (isLeftHand) {
+        // Left hand in camera (appears as right) - thumb extends to the right
+        if (landmarks[4].x < landmarks[3].x) count++;
+      } else {
+        // Right hand in camera (appears as left) - thumb extends to the left
+        if (landmarks[4].x > landmarks[3].x) count++;
+      }
       
-      // Other fingers (vertical check)
+      // Other fingers (vertical check - tip should be above pip joint)
       const fingerTips = [8, 12, 16, 20];
       const fingerPips = [6, 10, 14, 18];
       
@@ -812,7 +827,8 @@
         for (let i = 0; i < results.multiHandLandmarks.length; i++) {
           const landmarks = results.multiHandLandmarks[i];
           const handedness = results.multiHandedness[i].label;
-          const fingers = countFingers(landmarks);
+          const isLeftHand = handedness === 'Left';
+          const fingers = countFingers(landmarks, isLeftHand);
           
           // Palm center (average of landmarks)
           const palm = landmarks[9]; // Middle finger base as palm center
