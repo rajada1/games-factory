@@ -255,13 +255,13 @@
     <h3>⚡ CUSTOMIZATION</h3>
     
     <div class="control-group">
-      <label>Particle Count: <span id="particleCountVal">12000</span></label>
-      <input type="range" id="particleCountSlider" min="3000" max="30000" value="12000" step="1000">
+      <label>Particle Count: <span id="particleCountVal">8000</span></label>
+      <input type="range" id="particleCountSlider" min="3000" max="30000" value="8000" step="1000">
     </div>
     
     <div class="control-group">
-      <label>Particle Size: <span id="particleSizeVal">2.4</span></label>
-      <input type="range" id="particleSizeSlider" min="1" max="5" value="2.4" step="0.1">
+      <label>Particle Size: <span id="particleSizeVal">1.1</span></label>
+      <input type="range" id="particleSizeSlider" min="0.5" max="5" value="1.1" step="0.1">
     </div>
     
     <div class="control-group">
@@ -271,6 +271,7 @@
     
     <div class="control-group">
       <label>Repulsion Force: <span id="repulsionVal">50</span></label>
+      <div style="font-size:9px;opacity:0.6;margin-bottom:4px;">👉 Força que empurra partículas quando você aponta</div>
       <input type="range" id="repulsionSlider" min="10" max="150" value="50" step="5">
     </div>
     
@@ -357,8 +358,8 @@
   <script>
     // ============== CONFIG ==============
     let CONFIG = {
-      particleCount: 12000,
-      particleSize: 2.4,
+      particleCount: 8000,
+      particleSize: 1.1,
       returnSpeed: 0.16,
       repulsionForce: 50,
       nebulaIntensity: 1.0,
@@ -540,8 +541,8 @@
       const color = new THREE.Color(CONFIG.colors[0]);
       
       for (let i = 0; i < count; i++) {
-        const x = (Math.random() - 0.5) * 400;
-        const y = (Math.random() - 0.5) * 400;
+        const x = (Math.random() - 0.5) * window.innerWidth * 1.2;
+        const y = (Math.random() - 0.5) * window.innerHeight * 1.2;
         const z = (Math.random() - 0.5) * 50;
         
         positions[i * 3] = x;
