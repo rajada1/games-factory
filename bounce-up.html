@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bounce Up</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #e74c3c;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Bounce Up</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Jumper (Doodle Jump style) Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('bounce-up_best') || '0');
+bestEl.textContent = best;
+
+const player = {
+  x: 0,
+  y: 0,
+  width: 40,
+  height: 40,
+  vx: 0,
+  vy: 0,
+  gravity: 0.3,
+  jumpForce: -12,
+  direction: 1
+};
+
+let platforms = [];
+let cameraY = 0;
+let maxHeight = 0;
+
+function init() {
+  player.x = canvas.width / 2 - player.width / 2;
+  player.y = canvas.height - 100;
+  player.vx = 0;
+  player.vy = 0;
+  
+  platforms = [];
+  cameraY = 0;
+  maxHeight = 0;
+  score = 0;
+  scoreEl.textContent = '0';
+  
+  // Generate initial platforms
+  for (let y = canvas.height - 50; y > -500; y -= 80 + Math.random() * 40) {
+    platforms.push({
+      x: Math.random() * (canvas.width - 80),
+      y: y,
+      width: 80,
+      type: 'normal'
+    });
+  }
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+  
+  // Horizontal movement
+  player.x += player.vx;
+  player.vx *= 0.9; // Friction
+  
+  // Wrap around screen
+  if (player.x > canvas.width) player.x = -player.width;
+  if (player.x + player.width < 0) player.x = canvas.width;
+  
+  // Gravity
+  player.vy += player.gravity;
+  player.y += player.vy;
+  
+  // Platform collision (only when falling)
+  if (player.vy > 0) {
+    for (const platform of platforms) {
+      if (player.x + player.width > platform.x &&
+          player.x < platform.x + platform.width &&
+          player.y + player.height > platform.y &&
+          player.y + player.height < platform.y + 20 &&
+          player.vy > 0) {
+        player.vy = player.jumpForce;
+        player.y = platform.y - player.height;
+        playSound('jump');
+        break;
+      }
+    }
+  }
+  
+  // Camera follow
+  if (player.y < canvas.height / 2) {
+    const diff = canvas.height / 2 - player.y;
+    cameraY += diff;
+    player.y = canvas.height / 2;
+    
+    // Move platforms down
+    for (const platform of platforms) {
+      platform.y += diff;
+    }
+    
+    // Update score
+    maxHeight += diff;
+    score = Math.floor(maxHeight / 10);
+    scoreEl.textContent = score;
+  }
+  
+  // Remove off-screen platforms and spawn new ones
+  for (let i = platforms.length - 1; i >= 0; i--) {
+    if (platforms[i].y > canvas.height + 50) {
+      platforms.splice(i, 1);
+    }
+  }
+  
+  // Spawn new platforms at top
+  while (platforms.length < 15) {
+    const lastY = platforms.length > 0 ? 
+      Math.min(...platforms.map(p => p.y)) : 0;
+    
+    const gap = 60 + Math.random() * 40 + Math.min(score / 100, 30);
+    
+    platforms.push({
+      x: Math.random() * (canvas.width - 80),
+      y: lastY - gap,
+      width: 80 - Math.min(score / 50, 30),
+      type: Math.random() > 0.9 ? 'moving' : 'normal'
+    });
+  }
+  
+  // Update moving platforms
+  for (const platform of platforms) {
+    if (platform.type === 'moving') {
+      platform.x += Math.sin(Date.now() / 500 + platform.y) * 2;
+    }
+  }
+  
+  // Game over - fell off bottom
+  if (player.y > canvas.height + 50) {
+    gameOver();
+  }
+}
+
+function draw() {
+  // Background gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, '#87CEEB');
+  gradient.addColorStop(1, '#E0F6FF');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Clouds (decorative)
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  for (let i = 0; i < 5; i++) {
+    const x = (i * 150 + cameraY * 0.1) % (canvas.width + 100) - 50;
+    const y = (i * 100) % canvas.height;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 40, 20, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 30, y - 10, 30, 20, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 50, y, 35, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Platforms
+  for (const platform of platforms) {
+    if (platform.type === 'moving') {
+      ctx.fillStyle = '#9b59b6';
+    } else {
+      ctx.fillStyle = '#e74c3c';
+    }
+    
+    ctx.beginPath();
+    ctx.roundRect(platform.x, platform.y, platform.width, 15, 8);
+    ctx.fill();
+    
+    // Grass on top
+    ctx.fillStyle = '#27ae60';
+    ctx.beginPath();
+    ctx.roundRect(platform.x, platform.y, platform.width, 5, [8, 8, 0, 0]);
+    ctx.fill();
+  }
+  
+  // Player
+  ctx.save();
+  ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+  
+  // Body
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Face
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(-8, -5, 8, 0, Math.PI * 2);
+  ctx.arc(8, -5, 8, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.arc(-8 + player.vx * 0.5, -5, 4, 0, Math.PI * 2);
+  ctx.arc(8 + player.vx * 0.5, -5, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Feet (animated)
+  ctx.fillStyle = '#f39c12';
+  const footOffset = player.vy > 0 ? 5 : -5;
+  ctx.fillRect(-15, player.height / 2 - 10 + footOffset, 10, 10);
+  ctx.fillRect(5, player.height / 2 - 10 - footOffset, 10, 10);
+  
+  ctx.restore();
+}
+
+function gameOver() {
+  gameState = 'over';
+  playSound('fall');
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('bounce-up_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = score;
+  gameOverScreen.classList.add('show');
+  
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  init();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  if (type === 'jump') {
+    osc.frequency.setValueAtTime(300 + score, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(500 + score, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  } else if (type === 'fall') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.5);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.5);
+  }
+}
+
+// Controls - tilt or touch
+let useAccelerometer = false;
+
+if (window.DeviceOrientationEvent) {
+  window.addEventListener('deviceorientation', (e) => {
+    if (gameState === 'playing' && e.gamma !== null) {
+      useAccelerometer = true;
+      player.vx = e.gamma * 0.3;
+    }
+  });
+}
+
+document.addEventListener('touchstart', (e) => {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+});
+
+document.addEventListener('touchmove', (e) => {
+  if (gameState === 'playing' && !useAccelerometer) {
+    const touch = e.touches[0];
+    const centerX = canvas.width / 2;
+    player.vx = (touch.clientX - centerX) * 0.05;
+  }
+});
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+    player.vx = -6;
+  } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+    player.vx = 6;
+  }
+});
+
+document.addEventListener('click', () => {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+  }
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const text = `Subi ${score} metros em Bounce Up! 🦘`;
+  if (navigator.share) {
+    navigator.share({ title: 'Bounce Up', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado!');
+  }
+});
+
+gameLoop();
+
+  </script>
+</body>
+</html>

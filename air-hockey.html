@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Air Hockey</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #e74c3c;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Air Hockey</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Clicker Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+// Responsive canvas
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Game state
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('air-hockey_best') || '0');
+let clickMultiplier = 1;
+let autoClickers = 0;
+let particles = [];
+
+bestEl.textContent = formatNumber(best);
+
+// Main clickable object
+const mainObject = {
+  x: 0,
+  y: 0,
+  radius: 80,
+  scale: 1,
+  targetScale: 1
+};
+
+// Upgrades
+const upgrades = [
+  { name: 'x2 Click', cost: 50, purchased: false },
+  { name: 'Auto +1/s', cost: 100, purchased: 0 },
+  { name: 'x5 Click', cost: 500, purchased: false },
+  { name: 'Auto +5/s', cost: 1000, purchased: 0 }
+];
+
+function formatNumber(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function init() {
+  mainObject.x = canvas.width / 2;
+  mainObject.y = canvas.height / 2 - 50;
+}
+
+function click(x, y) {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+
+  // Check if clicked main object
+  const dx = x - mainObject.x;
+  const dy = y - mainObject.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < mainObject.radius) {
+    score += clickMultiplier;
+    scoreEl.textContent = formatNumber(score);
+    
+    // Visual feedback
+    mainObject.targetScale = 1.2;
+    
+    // Particles
+    for (let i = 0; i < 5; i++) {
+      particles.push({
+        x: mainObject.x,
+        y: mainObject.y,
+        vx: (Math.random() - 0.5) * 10,
+        vy: (Math.random() - 0.5) * 10 - 5,
+        life: 1,
+        text: '+' + clickMultiplier
+      });
+    }
+
+    playSound('click');
+    
+    if (navigator.vibrate) navigator.vibrate(10);
+  }
+
+  // Check upgrades
+  checkUpgradeClick(x, y);
+}
+
+function checkUpgradeClick(x, y) {
+  const startY = canvas.height - 180;
+  
+  upgrades.forEach((upgrade, i) => {
+    const ux = 20;
+    const uy = startY + i * 40;
+    const uw = canvas.width - 40;
+    const uh = 35;
+    
+    if (x >= ux && x <= ux + uw && y >= uy && y <= uy + uh) {
+      if (score >= upgrade.cost) {
+        score -= upgrade.cost;
+        scoreEl.textContent = formatNumber(score);
+        
+        if (upgrade.name.includes('x2')) {
+          clickMultiplier *= 2;
+          upgrade.purchased = true;
+        } else if (upgrade.name.includes('x5')) {
+          clickMultiplier *= 5;
+          upgrade.purchased = true;
+        } else if (upgrade.name.includes('Auto +1')) {
+          autoClickers += 1;
+          upgrade.purchased++;
+          upgrade.cost = Math.floor(upgrade.cost * 1.5);
+        } else if (upgrade.name.includes('Auto +5')) {
+          autoClickers += 5;
+          upgrade.purchased++;
+          upgrade.cost = Math.floor(upgrade.cost * 1.5);
+        }
+        
+        playSound('upgrade');
+      }
+    }
+  });
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+
+  // Animate scale
+  mainObject.scale += (mainObject.targetScale - mainObject.scale) * 0.2;
+  mainObject.targetScale += (1 - mainObject.targetScale) * 0.1;
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].x += particles[i].vx;
+    particles[i].y += particles[i].vy;
+    particles[i].vy += 0.2;
+    particles[i].life -= 0.02;
+    
+    if (particles[i].life <= 0) {
+      particles.splice(i, 1);
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (gameState === 'start') return;
+
+  // Draw main clickable
+  ctx.save();
+  ctx.translate(mainObject.x, mainObject.y);
+  ctx.scale(mainObject.scale, mainObject.scale);
+  
+  // Glow effect
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, mainObject.radius * 1.5);
+  gradient.addColorStop(0, '#e74c3c');
+  gradient.addColorStop(0.5, '#e74c3c88');
+  gradient.addColorStop(1, 'transparent');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, mainObject.radius * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Main circle
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.arc(0, 0, mainObject.radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Icon/emoji
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 48px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🎮', 0, 0);
+  
+  ctx.restore();
+
+  // Draw particles
+  ctx.fillStyle = '#e74c3c';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'center';
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillText(p.text, p.x, p.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Draw upgrades
+  drawUpgrades();
+
+  // Draw stats
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${formatNumber(clickMultiplier)}/click | ${formatNumber(autoClickers)}/sec`, canvas.width / 2, mainObject.y + mainObject.radius + 40);
+}
+
+function drawUpgrades() {
+  const startY = canvas.height - 180;
+  
+  ctx.font = '14px sans-serif';
+  ctx.textAlign = 'left';
+  
+  upgrades.forEach((upgrade, i) => {
+    if (upgrade.purchased === true) return; // Skip purchased one-time upgrades
+    
+    const ux = 20;
+    const uy = startY + i * 40;
+    const uw = canvas.width - 40;
+    const uh = 35;
+    
+    const canAfford = score >= upgrade.cost;
+    
+    // Background
+    ctx.fillStyle = canAfford ? 'rgba(46, 204, 113, 0.3)' : 'rgba(255,255,255,0.1)';
+    ctx.fillRect(ux, uy, uw, uh);
+    
+    // Border
+    ctx.strokeStyle = canAfford ? '#2ecc71' : 'rgba(255,255,255,0.3)';
+    ctx.strokeRect(ux, uy, uw, uh);
+    
+    // Text
+    ctx.fillStyle = canAfford ? 'white' : 'rgba(255,255,255,0.5)';
+    ctx.fillText(upgrade.name + (typeof upgrade.purchased === 'number' && upgrade.purchased > 0 ? ` (${upgrade.purchased})` : ''), ux + 10, uy + 22);
+    
+    ctx.textAlign = 'right';
+    ctx.fillText(formatNumber(upgrade.cost), ux + uw - 10, uy + 22);
+    ctx.textAlign = 'left';
+  });
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Auto clicker
+setInterval(() => {
+  if (gameState === 'playing' && autoClickers > 0) {
+    score += autoClickers;
+    scoreEl.textContent = formatNumber(score);
+    
+    if (score > best) {
+      best = score;
+      localStorage.setItem('air-hockey_best', best);
+      bestEl.textContent = formatNumber(best);
+    }
+  }
+}, 1000);
+
+// Sound effects
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'click':
+      oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.05);
+      gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.05);
+      break;
+    case 'upgrade':
+      oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.2);
+      break;
+  }
+}
+
+// Event listeners
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return { x, y };
+}
+
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const pos = getPos(e);
+  click(pos.x, pos.y);
+}, { passive: false });
+
+document.addEventListener('mousedown', (e) => {
+  const pos = getPos(e);
+  click(pos.x, pos.y);
+});
+
+// Start
+init();
+gameLoop();
+
+  </script>
+</body>
+</html>

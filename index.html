@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Factory - Galeria</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: white;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 30px;
+    }
+    .filters {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: #e74c3c;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .game-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      text-decoration: none;
+      color: white;
+    }
+    .game-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .game-preview {
+      height: 150px;
+      background: linear-gradient(45deg, #2d3436, #636e72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+    .game-info {
+      padding: 15px;
+    }
+    .game-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .game-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tier {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .tier-S { background: #f1c40f; color: #000; }
+    .tier-A { background: #2ecc71; color: #000; }
+    .tier-B { background: #3498db; }
+    .tier-C { background: #e67e22; }
+    .tier-D { background: #e74c3c; }
+    .score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .base-type {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      text-transform: capitalize;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Game Factory</h1>
+  <p class="subtitle">100 jogos gerados • 89 viáveis para publicação</p>
+  
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">Todos</button>
+    <button class="filter-btn" data-filter="S">🏆 Tier S</button>
+    <button class="filter-btn" data-filter="A">⭐ Tier A</button>
+    <button class="filter-btn" data-filter="B">✅ Tier B</button>
+    <button class="filter-btn" data-filter="viable">✅ Viáveis</button>
+  </div>
+  
+  <div class="grid" id="games-grid">
+    
+    <a href="flappy-bitcoin.html" class="game-card" data-tier="A" data-viable="true">
+      <div class="game-preview">₿</div>
+      <div class="game-info">
+        <div class="game-name">Flappy Bitcoin</div>
+        <div class="base-type">flappy</div>
+        <div class="game-meta">
+          <span class="tier tier-A">A</span>
+          <span class="score">73 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="flappy-bird.html" class="game-card" data-tier="A" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Flappy Bird</div>
+        <div class="base-type">flappy</div>
+        <div class="game-meta">
+          <span class="tier tier-A">A</span>
+          <span class="score">71 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="flappy-doge.html" class="game-card" data-tier="A" data-viable="true">
+      <div class="game-preview">🐕</div>
+      <div class="game-info">
+        <div class="game-name">Flappy Doge</div>
+        <div class="base-type">flappy</div>
+        <div class="game-meta">
+          <span class="tier tier-A">A</span>
+          <span class="score">71 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="flappy-rocket.html" class="game-card" data-tier="A" data-viable="true">
+      <div class="game-preview">🚀</div>
+      <div class="game-info">
+        <div class="game-name">Flappy Rocket</div>
+        <div class="base-type">flappy</div>
+        <div class="game-meta">
+          <span class="tier tier-A">A</span>
+          <span class="score">67 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="flappy-fish.html" class="game-card" data-tier="A" data-viable="true">
+      <div class="game-preview">🐟</div>
+      <div class="game-info">
+        <div class="game-name">Flappy Fish</div>
+        <div class="base-type">flappy</div>
+        <div class="game-meta">
+          <span class="tier tier-A">A</span>
+          <span class="score">67 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="flappy-ghost.html" class="game-card" data-tier="A" data-viable="true">
+      <div class="game-preview">👻</div>
+      <div class="game-info">
+        <div class="game-name">Flappy Ghost</div>
+        <div class="base-type">flappy</div>
+        <div class="game-meta">
+          <span class="tier tier-A">A</span>
+          <span class="score">67 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="space-runner.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🚀</div>
+      <div class="game-info">
+        <div class="game-name">Space Runner</div>
+        <div class="base-type">runner</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="stack.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Stack</div>
+        <div class="base-type">stacker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="tower-stack.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Tower Stack</div>
+        <div class="base-type">stacker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="block-stack.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Block Stack</div>
+        <div class="base-type">stacker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="cake-stack.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎂</div>
+      <div class="game-info">
+        <div class="game-name">Cake Stack</div>
+        <div class="base-type">stacker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="box-tower.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Box Tower</div>
+        <div class="base-type">stacker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="pixel-stack.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Pixel Stack</div>
+        <div class="base-type">stacker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="knife-hit.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Knife Hit</div>
+        <div class="base-type">timing</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="dart-throw.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎯</div>
+      <div class="game-info">
+        <div class="game-name">Dart Throw</div>
+        <div class="base-type">timing</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="axe-throw.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Axe Throw</div>
+        <div class="base-type">timing</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="shuriken.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Shuriken</div>
+        <div class="base-type">timing</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="arrow-shot.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎯</div>
+      <div class="game-info">
+        <div class="game-name">Arrow Shot</div>
+        <div class="base-type">timing</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="ring-toss.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Ring Toss</div>
+        <div class="base-type">timing</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="color-switch.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Color Switch</div>
+        <div class="base-type">color-match</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="color-gate.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Color Gate</div>
+        <div class="base-type">color-match</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="color-run.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Color Run</div>
+        <div class="base-type">color-match</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rgb-match.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">RGB Match</div>
+        <div class="base-type">color-match</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="neon-colors.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Neon Colors</div>
+        <div class="base-type">color-match</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rainbow-pass.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Rainbow Pass</div>
+        <div class="base-type">color-match</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rhythm-tap.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Rhythm Tap</div>
+        <div class="base-type">rhythm</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="beat-tap.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎵</div>
+      <div class="game-info">
+        <div class="game-name">Beat Tap</div>
+        <div class="base-type">rhythm</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="music-tiles.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎵</div>
+      <div class="game-info">
+        <div class="game-name">Music Tiles</div>
+        <div class="base-type">rhythm</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rhythm-dash.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Rhythm Dash</div>
+        <div class="base-type">rhythm</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="note-catcher.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🐱</div>
+      <div class="game-info">
+        <div class="game-name">Note Catcher</div>
+        <div class="base-type">rhythm</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="beat-runner.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎵</div>
+      <div class="game-info">
+        <div class="game-name">Beat Runner</div>
+        <div class="base-type">rhythm</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">65 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="dino-run.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Dino Run</div>
+        <div class="base-type">runner</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">63 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="ninja-run.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🥷</div>
+      <div class="game-info">
+        <div class="game-name">Ninja Run</div>
+        <div class="base-type">runner</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">63 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="zombie-escape.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🧟</div>
+      <div class="game-info">
+        <div class="game-name">Zombie Escape</div>
+        <div class="base-type">runner</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">63 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="cat-run.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🐱</div>
+      <div class="game-info">
+        <div class="game-name">Cat Run</div>
+        <div class="base-type">runner</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">63 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="robot-dash.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🤖</div>
+      <div class="game-info">
+        <div class="game-name">Robot Dash</div>
+        <div class="base-type">runner</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">63 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="space-jump.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🚀</div>
+      <div class="game-info">
+        <div class="game-name">Space Jump</div>
+        <div class="base-type">jumper</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">62 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="reaction.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Reaction</div>
+        <div class="base-type">reflex</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">61 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="quick-tap.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Quick Tap</div>
+        <div class="base-type">reflex</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">61 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="speed-test.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Speed Test</div>
+        <div class="base-type">reflex</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">61 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="reflex-master.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Reflex Master</div>
+        <div class="base-type">reflex</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">61 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="lightning-hands.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Lightning Hands</div>
+        <div class="base-type">reflex</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">61 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="fast-fingers.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Fast Fingers</div>
+        <div class="base-type">reflex</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">61 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="cookie-clicker.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🍪</div>
+      <div class="game-info">
+        <div class="game-name">Cookie Clicker</div>
+        <div class="base-type">clicker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="bitcoin-miner.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">₿</div>
+      <div class="game-info">
+        <div class="game-name">Bitcoin Miner</div>
+        <div class="base-type">clicker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="doodle-jump.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Doodle Jump</div>
+        <div class="base-type">jumper</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="ninja-jump.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🥷</div>
+      <div class="game-info">
+        <div class="game-name">Ninja Jump</div>
+        <div class="base-type">jumper</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="bounce-up.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Bounce Up</div>
+        <div class="base-type">jumper</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="sky-climber.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Sky Climber</div>
+        <div class="base-type">jumper</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rocket-jump.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🚀</div>
+      <div class="game-info">
+        <div class="game-name">Rocket Jump</div>
+        <div class="base-type">jumper</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="emoji-memory.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">😀</div>
+      <div class="game-info">
+        <div class="game-name">Emoji Memory</div>
+        <div class="base-type">memory</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">60 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="emoji-tapper.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">😀</div>
+      <div class="game-info">
+        <div class="game-name">Emoji Tapper</div>
+        <div class="base-type">clicker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="meme-clicker.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🤣</div>
+      <div class="game-info">
+        <div class="game-name">Meme Clicker</div>
+        <div class="base-type">clicker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="snake.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Snake</div>
+        <div class="base-type">snake</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="neon-snake.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Neon Snake</div>
+        <div class="base-type">snake</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="worm-io.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Worm.io</div>
+        <div class="base-type">snake</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="chain-snake.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Chain Snake</div>
+        <div class="base-type">snake</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="pixel-serpent.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Pixel Serpent</div>
+        <div class="base-type">snake</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rainbow-snake.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Rainbow Snake</div>
+        <div class="base-type">snake</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="breakout.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Breakout</div>
+        <div class="base-type">breakout</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="neon-breakout.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Neon Breakout</div>
+        <div class="base-type">breakout</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="brick-smasher.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Brick Smasher</div>
+        <div class="base-type">breakout</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="ball-breaker.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">⚽</div>
+      <div class="game-info">
+        <div class="game-name">Ball Breaker</div>
+        <div class="base-type">breakout</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="block-destroyer.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Block Destroyer</div>
+        <div class="base-type">breakout</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="pixel-breakout.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Pixel Breakout</div>
+        <div class="base-type">breakout</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">58 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="dodge.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Dodge</div>
+        <div class="base-type">avoider</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">57 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="rain-dodge.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Rain Dodge</div>
+        <div class="base-type">avoider</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">57 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="meteor-storm.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Meteor Storm</div>
+        <div class="base-type">avoider</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">57 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="bullet-hell.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Bullet Hell</div>
+        <div class="base-type">avoider</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">57 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="traffic-dodge.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Traffic Dodge</div>
+        <div class="base-type">avoider</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">57 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="laser-escape.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Laser Escape</div>
+        <div class="base-type">avoider</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">57 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="memory.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Memory</div>
+        <div class="base-type">memory</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">56 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="pattern-memory.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Pattern Memory</div>
+        <div class="base-type">memory</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">56 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="sound-memory.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Sound Memory</div>
+        <div class="base-type">memory</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">56 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="color-memory.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Color Memory</div>
+        <div class="base-type">memory</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">56 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="quick-memory.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Quick Memory</div>
+        <div class="base-type">memory</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">56 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="2048.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">2048</div>
+        <div class="base-type">2048</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="angry-birds.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Angry Birds</div>
+        <div class="base-type">physics</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="cannon-shot.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Cannon Shot</div>
+        <div class="base-type">physics</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="slingshot.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Slingshot</div>
+        <div class="base-type">physics</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="ball-throw.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">⚽</div>
+      <div class="game-info">
+        <div class="game-name">Ball Throw</div>
+        <div class="base-type">physics</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="catapult.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🐱</div>
+      <div class="game-info">
+        <div class="game-name">Catapult</div>
+        <div class="base-type">physics</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="physics-puzzle.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Physics Puzzle</div>
+        <div class="base-type">physics</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">55 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="dinheiro-clicker.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">💰</div>
+      <div class="game-info">
+        <div class="game-name">Dinheiro Clicker</div>
+        <div class="base-type">clicker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">54 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="cat-tapper.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🐱</div>
+      <div class="game-info">
+        <div class="game-name">Cat Tapper</div>
+        <div class="base-type">clicker</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">54 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="emoji-2048.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">😀</div>
+      <div class="game-info">
+        <div class="game-name">Emoji 2048</div>
+        <div class="base-type">2048</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">53 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="doge-2048.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🐕</div>
+      <div class="game-info">
+        <div class="game-name">Doge 2048</div>
+        <div class="base-type">2048</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">53 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="meme-2048.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🤣</div>
+      <div class="game-info">
+        <div class="game-name">Meme 2048</div>
+        <div class="base-type">2048</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">53 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="crypto-2048.html" class="game-card" data-tier="B" data-viable="true">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Crypto 2048</div>
+        <div class="base-type">2048</div>
+        <div class="game-meta">
+          <span class="tier tier-B">B</span>
+          <span class="score">51 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="color-2048.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Color 2048</div>
+        <div class="base-type">2048</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">49 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="maze.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Maze</div>
+        <div class="base-type">maze</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">48 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="dark-maze.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Dark Maze</div>
+        <div class="base-type">maze</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">48 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="tilt-maze.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Tilt Maze</div>
+        <div class="base-type">maze</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">48 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="ice-maze.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Ice Maze</div>
+        <div class="base-type">maze</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">48 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="pong.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Pong</div>
+        <div class="base-type">pong</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">44 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="neon-pong.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Neon Pong</div>
+        <div class="base-type">pong</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">44 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="air-hockey.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Air Hockey</div>
+        <div class="base-type">pong</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">44 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="paddle-battle.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Paddle Battle</div>
+        <div class="base-type">pong</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">44 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="brick-pong.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Brick Pong</div>
+        <div class="base-type">pong</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">44 pts</span>
+        </div>
+      </div>
+    </a>
+    <a href="speed-pong.html" class="game-card" data-tier="C" data-viable="false">
+      <div class="game-preview">🎮</div>
+      <div class="game-info">
+        <div class="game-name">Speed Pong</div>
+        <div class="base-type">pong</div>
+        <div class="game-meta">
+          <span class="tier tier-C">C</span>
+          <span class="score">44 pts</span>
+        </div>
+      </div>
+    </a>
+  </div>
+  
+  <script>
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('.game-card').forEach(card => {
+          if (filter === 'all') {
+            card.style.display = 'block';
+          } else if (filter === 'viable') {
+            card.style.display = card.dataset.viable === 'true' ? 'block' : 'none';
+          } else {
+            card.style.display = card.dataset.tier === filter ? 'block' : 'none';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Shuriken</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #e74c3c;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Shuriken</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Timing Game (Knife Hit style) Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('shuriken_best') || '0');
+bestEl.textContent = best;
+
+const target = {
+  x: 0,
+  y: 0,
+  radius: 80,
+  rotation: 0,
+  rotationSpeed: 0.02,
+  knives: []
+};
+
+const knife = {
+  x: 0,
+  y: 0,
+  width: 10,
+  height: 60,
+  flying: false,
+  flySpeed: 20,
+  rotation: 0
+};
+
+let knivesRemaining = 5;
+let level = 1;
+
+function init() {
+  target.x = canvas.width / 2;
+  target.y = canvas.height / 3;
+  target.rotation = 0;
+  target.rotationSpeed = 0.02;
+  target.knives = [];
+  
+  knife.x = canvas.width / 2;
+  knife.y = canvas.height - 120;
+  knife.flying = false;
+  knife.rotation = 0;
+  
+  score = 0;
+  scoreEl.textContent = '0';
+  knivesRemaining = 5;
+  level = 1;
+}
+
+function nextLevel() {
+  level++;
+  knivesRemaining = 5 + Math.floor(level / 2);
+  target.knives = [];
+  target.rotationSpeed = 0.02 + level * 0.005;
+  
+  // Add some pre-placed knives on higher levels
+  if (level > 2) {
+    const preKnives = Math.min(level - 2, 4);
+    for (let i = 0; i < preKnives; i++) {
+      target.knives.push({
+        angle: (i * Math.PI * 2) / preKnives
+      });
+    }
+  }
+  
+  playSound('levelUp');
+}
+
+function throwKnife() {
+  if (knife.flying || gameState !== 'playing') return;
+  
+  knife.flying = true;
+  playSound('throw');
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+  
+  // Rotate target
+  target.rotation += target.rotationSpeed;
+  
+  // Oscillate rotation speed for variation
+  target.rotationSpeed = 0.02 + level * 0.005 + 
+    Math.sin(Date.now() / 1000) * 0.01;
+  
+  // Flying knife
+  if (knife.flying) {
+    knife.y -= knife.flySpeed;
+    
+    // Check hit target
+    const dx = knife.x - target.x;
+    const dy = knife.y - target.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist < target.radius + knife.height / 2) {
+      // Calculate angle of hit
+      const hitAngle = Math.atan2(dy, dx) - target.rotation;
+      
+      // Check collision with existing knives
+      for (const k of target.knives) {
+        const angleDiff = Math.abs(normalizeAngle(k.angle - hitAngle));
+        if (angleDiff < 0.3) {
+          gameOver();
+          return;
+        }
+      }
+      
+      // Successfully stuck
+      target.knives.push({ angle: hitAngle });
+      knife.flying = false;
+      knife.y = canvas.height - 120;
+      
+      score += 10;
+      scoreEl.textContent = score;
+      knivesRemaining--;
+      
+      playSound('hit');
+      
+      // Check level complete
+      if (knivesRemaining <= 0) {
+        score += 50; // Bonus
+        scoreEl.textContent = score;
+        nextLevel();
+      }
+    }
+    
+    // Missed (went off screen)
+    if (knife.y < -knife.height) {
+      gameOver();
+    }
+  }
+}
+
+function normalizeAngle(angle) {
+  while (angle > Math.PI) angle -= Math.PI * 2;
+  while (angle < -Math.PI) angle += Math.PI * 2;
+  return angle;
+}
+
+function draw() {
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw remaining knives indicator
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  for (let i = 0; i < knivesRemaining; i++) {
+    ctx.fillRect(canvas.width / 2 - (knivesRemaining * 8) + i * 16, 
+                 canvas.height - 50, 8, 30);
+  }
+  
+  // Level indicator
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Level ${level}`, canvas.width / 2, 30);
+  
+  // Draw target (log)
+  ctx.save();
+  ctx.translate(target.x, target.y);
+  ctx.rotate(target.rotation);
+  
+  // Wood texture
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, target.radius);
+  gradient.addColorStop(0, '#8B4513');
+  gradient.addColorStop(0.7, '#654321');
+  gradient.addColorStop(1, '#4a3520');
+  
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, target.radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Rings
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx.lineWidth = 2;
+  for (let r = 20; r < target.radius; r += 20) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  
+  // Draw stuck knives
+  for (const k of target.knives) {
+    ctx.save();
+    ctx.rotate(k.angle);
+    ctx.translate(target.radius, 0);
+    
+    // Knife blade
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(-30, -4, 35, 8);
+    
+    // Knife handle
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(5, -6, 25, 12);
+    
+    ctx.restore();
+  }
+  
+  ctx.restore();
+  
+  // Draw flying/ready knife
+  ctx.save();
+  ctx.translate(knife.x, knife.y);
+  ctx.rotate(knife.rotation);
+  
+  // Blade
+  ctx.fillStyle = '#ccc';
+  ctx.beginPath();
+  ctx.moveTo(-knife.width / 2, knife.height / 3);
+  ctx.lineTo(0, -knife.height / 2);
+  ctx.lineTo(knife.width / 2, knife.height / 3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillRect(-knife.width / 2, knife.height / 3, knife.width, knife.height / 3);
+  
+  // Handle
+  ctx.fillStyle = '#e74c3c';
+  ctx.fillRect(-knife.width / 2 - 2, knife.height / 3 * 2, knife.width + 4, knife.height / 3);
+  
+  ctx.restore();
+}
+
+function gameOver() {
+  gameState = 'over';
+  playSound('fail');
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('shuriken_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = score;
+  gameOverScreen.classList.add('show');
+  
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  init();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'throw':
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      break;
+    case 'hit':
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      break;
+    case 'levelUp':
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      break;
+    case 'fail':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      break;
+  }
+  
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.3);
+}
+
+// Controls
+function tap() {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  throwKnife();
+}
+
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  tap();
+}, { passive: false });
+
+document.addEventListener('mousedown', tap);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') tap();
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const text = `Cheguei no level ${level} com ${score} pontos em Shuriken! 🎯`;
+  if (navigator.share) {
+    navigator.share({ title: 'Shuriken', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado!');
+  }
+});
+
+gameLoop();
+
+  </script>
+</body>
+</html>

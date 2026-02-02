@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Memory</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #e74c3c;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Memory</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Memory Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+  if (cards.length > 0) layoutCards();
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('memory_best') || '0');
+bestEl.textContent = best;
+
+const emojis = ['🎮', '🎯', '🎲', '🎪', '🎨', '🎭', '🎸', '🎺', 
+                '🌟', '🌈', '🔥', '💎', '🍕', '🍔', '🎂', '🍭'];
+
+let cards = [];
+let flippedCards = [];
+let matchedPairs = 0;
+let moves = 0;
+let canFlip = true;
+let gridSize = 4; // 4x4 = 16 cards = 8 pairs
+let level = 1;
+
+function init() {
+  score = 0;
+  scoreEl.textContent = '0';
+  moves = 0;
+  matchedPairs = 0;
+  flippedCards = [];
+  canFlip = true;
+  level = 1;
+  
+  createCards();
+}
+
+function createCards() {
+  cards = [];
+  const pairs = (gridSize * gridSize) / 2;
+  const selectedEmojis = emojis.slice(0, pairs);
+  
+  // Create pairs
+  const cardValues = [...selectedEmojis, ...selectedEmojis];
+  
+  // Shuffle
+  for (let i = cardValues.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cardValues[i], cardValues[j]] = [cardValues[j], cardValues[i]];
+  }
+  
+  // Create card objects
+  for (let i = 0; i < cardValues.length; i++) {
+    cards.push({
+      value: cardValues[i],
+      flipped: false,
+      matched: false,
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      flipProgress: 0
+    });
+  }
+  
+  layoutCards();
+}
+
+function layoutCards() {
+  const padding = 10;
+  const gridWidth = canvas.width - padding * 2;
+  const gridHeight = canvas.height - 100 - padding * 2;
+  
+  const cardWidth = (gridWidth - padding * (gridSize - 1)) / gridSize;
+  const cardHeight = (gridHeight - padding * (gridSize - 1)) / gridSize;
+  const size = Math.min(cardWidth, cardHeight, 100);
+  
+  const totalWidth = size * gridSize + padding * (gridSize - 1);
+  const totalHeight = size * gridSize + padding * (gridSize - 1);
+  const startX = (canvas.width - totalWidth) / 2;
+  const startY = (canvas.height - totalHeight) / 2;
+  
+  for (let i = 0; i < cards.length; i++) {
+    const row = Math.floor(i / gridSize);
+    const col = i % gridSize;
+    
+    cards[i].x = startX + col * (size + padding);
+    cards[i].y = startY + row * (size + padding);
+    cards[i].width = size;
+    cards[i].height = size;
+  }
+}
+
+function getCardAt(x, y) {
+  for (let i = cards.length - 1; i >= 0; i--) {
+    const card = cards[i];
+    if (x >= card.x && x <= card.x + card.width &&
+        y >= card.y && y <= card.y + card.height) {
+      return card;
+    }
+  }
+  return null;
+}
+
+function flipCard(card) {
+  if (!canFlip || card.flipped || card.matched) return;
+  
+  card.flipped = true;
+  flippedCards.push(card);
+  playSound('flip');
+  
+  if (flippedCards.length === 2) {
+    moves++;
+    canFlip = false;
+    
+    const [card1, card2] = flippedCards;
+    
+    if (card1.value === card2.value) {
+      // Match!
+      setTimeout(() => {
+        card1.matched = true;
+        card2.matched = true;
+        matchedPairs++;
+        score += 100 - moves * 2;
+        score = Math.max(score, 10);
+        scoreEl.textContent = score;
+        playSound('match');
+        
+        flippedCards = [];
+        canFlip = true;
+        
+        // Check win
+        if (matchedPairs === cards.length / 2) {
+          score += 500; // Bonus
+          scoreEl.textContent = score;
+          
+          setTimeout(() => {
+            level++;
+            if (level <= 3) {
+              gridSize = 4 + level;
+              if (gridSize % 2 !== 0) gridSize++; // Keep even
+              matchedPairs = 0;
+              moves = 0;
+              createCards();
+              playSound('levelUp');
+            } else {
+              gameOver();
+            }
+          }, 500);
+        }
+      }, 300);
+    } else {
+      // No match - flip back
+      setTimeout(() => {
+        card1.flipped = false;
+        card2.flipped = false;
+        flippedCards = [];
+        canFlip = true;
+        playSound('wrong');
+      }, 1000);
+    }
+  }
+}
+
+function update() {
+  // Animate card flips
+  for (const card of cards) {
+    if (card.flipped || card.matched) {
+      card.flipProgress = Math.min(1, card.flipProgress + 0.15);
+    } else {
+      card.flipProgress = Math.max(0, card.flipProgress - 0.15);
+    }
+  }
+}
+
+function draw() {
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Info bar
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Level ${level} | Moves: ${moves}`, canvas.width / 2, 30);
+  
+  // Draw cards
+  for (const card of cards) {
+    ctx.save();
+    ctx.translate(card.x + card.width / 2, card.y + card.height / 2);
+    
+    // Flip animation (scale X)
+    const scaleX = Math.abs(Math.cos(card.flipProgress * Math.PI));
+    ctx.scale(scaleX, 1);
+    
+    // Card background
+    if (card.matched) {
+      ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+    } else if (card.flipProgress > 0.5) {
+      ctx.fillStyle = '#e74c3c';
+    } else {
+      ctx.fillStyle = '#3d3d5c';
+    }
+    
+    ctx.beginPath();
+    ctx.roundRect(-card.width / 2, -card.height / 2, card.width, card.height, 10);
+    ctx.fill();
+    
+    // Card border
+    ctx.strokeStyle = card.matched ? '#2ecc71' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Card content
+    if (card.flipProgress > 0.5 || card.matched) {
+      ctx.font = `${card.width * 0.5}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(card.value, 0, 0);
+    } else {
+      // Card back pattern
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.fillText('?', 0, 5);
+    }
+    
+    ctx.restore();
+  }
+}
+
+function gameOver() {
+  gameState = 'over';
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('memory_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = score;
+  gameOverScreen.classList.add('show');
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  gridSize = 4;
+  init();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'flip':
+      osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      break;
+    case 'match':
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      break;
+    case 'wrong':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      break;
+    case 'levelUp':
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      break;
+  }
+  
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.3);
+}
+
+// Controls
+function handleClick(x, y) {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  if (gameState === 'playing') {
+    const card = getCardAt(x, y);
+    if (card) flipCard(card);
+  }
+}
+
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  handleClick(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+}, { passive: false });
+
+document.addEventListener('mousedown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  handleClick(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const text = `Completei o jogo da memória com ${score} pontos em Memory! 🧠`;
+  if (navigator.share) {
+    navigator.share({ title: 'Memory', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado!');
+  }
+});
+
+gameLoop();
+
+  </script>
+</body>
+</html>

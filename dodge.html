@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dodge</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #e74c3c;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Dodge</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Avoider Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('dodge_best') || '0');
+bestEl.textContent = best;
+
+const player = {
+  x: 0,
+  y: 0,
+  radius: 20,
+  targetX: 0,
+  targetY: 0
+};
+
+let obstacles = [];
+let particles = [];
+let spawnRate = 1000;
+let lastSpawn = 0;
+let difficulty = 1;
+
+function init() {
+  player.x = canvas.width / 2;
+  player.y = canvas.height - 100;
+  player.targetX = player.x;
+  player.targetY = player.y;
+  
+  obstacles = [];
+  particles = [];
+  score = 0;
+  scoreEl.textContent = '0';
+  spawnRate = 1000;
+  difficulty = 1;
+}
+
+function spawnObstacle() {
+  const size = 15 + Math.random() * 20;
+  const speed = 2 + Math.random() * 2 + difficulty * 0.5;
+  
+  obstacles.push({
+    x: Math.random() * (canvas.width - size * 2) + size,
+    y: -size,
+    radius: size,
+    speed: speed,
+    rotation: 0,
+    rotationSpeed: (Math.random() - 0.5) * 0.2
+  });
+}
+
+function update(timestamp) {
+  if (gameState !== 'playing') return;
+  
+  // Score
+  score++;
+  if (score % 60 === 0) {
+    scoreEl.textContent = Math.floor(score / 60);
+  }
+  
+  // Increase difficulty
+  if (score % 300 === 0) {
+    difficulty += 0.2;
+    spawnRate = Math.max(300, spawnRate - 50);
+  }
+  
+  // Spawn obstacles
+  if (timestamp - lastSpawn > spawnRate) {
+    spawnObstacle();
+    lastSpawn = timestamp;
+    
+    // Spawn multiple at higher difficulty
+    if (difficulty > 2 && Math.random() > 0.5) {
+      spawnObstacle();
+    }
+  }
+  
+  // Player movement (smooth follow)
+  player.x += (player.targetX - player.x) * 0.15;
+  player.y += (player.targetY - player.y) * 0.15;
+  
+  // Keep player in bounds
+  player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+  player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+  
+  // Update obstacles
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obs = obstacles[i];
+    obs.y += obs.speed;
+    obs.rotation += obs.rotationSpeed;
+    
+    // Collision
+    const dx = player.x - obs.x;
+    const dy = player.y - obs.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist < player.radius + obs.radius - 5) {
+      gameOver();
+      return;
+    }
+    
+    // Remove off-screen
+    if (obs.y > canvas.height + obs.radius) {
+      obstacles.splice(i, 1);
+    }
+  }
+  
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].y -= particles[i].speed;
+    particles[i].alpha -= 0.02;
+    
+    if (particles[i].alpha <= 0) {
+      particles.splice(i, 1);
+    }
+  }
+  
+  // Spawn trail particles
+  if (Math.random() > 0.5) {
+    particles.push({
+      x: player.x + (Math.random() - 0.5) * 10,
+      y: player.y + player.radius,
+      radius: Math.random() * 5 + 2,
+      speed: Math.random() * 2 + 1,
+      alpha: 0.5
+    });
+  }
+}
+
+function draw() {
+  // Background
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, '#0f0c29');
+  gradient.addColorStop(1, '#302b63');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Stars
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  for (let i = 0; i < 50; i++) {
+    const x = (i * 73) % canvas.width;
+    const y = ((i * 137 + score * 0.5) % canvas.height);
+    ctx.beginPath();
+    ctx.arc(x, y, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Particles (trail)
+  for (const p of particles) {
+    ctx.fillStyle = `rgba(46, 204, 113, ${p.alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Obstacles
+  ctx.fillStyle = '#e74c3c';
+  for (const obs of obstacles) {
+    ctx.save();
+    ctx.translate(obs.x, obs.y);
+    ctx.rotate(obs.rotation);
+    
+    // Draw as spiky shape
+    ctx.beginPath();
+    const spikes = 5;
+    for (let i = 0; i < spikes * 2; i++) {
+      const radius = i % 2 === 0 ? obs.radius : obs.radius * 0.5;
+      const angle = (i * Math.PI) / spikes;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+  }
+  
+  // Player
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  
+  // Glow
+  ctx.shadowColor = '#e74c3c';
+  ctx.shadowBlur = 20;
+  
+  // Shield/body
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Inner
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(0, -5, player.radius * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+function gameOver() {
+  gameState = 'over';
+  playSound('hit');
+  
+  const finalScore = Math.floor(score / 60);
+  if (finalScore > best) {
+    best = finalScore;
+    localStorage.setItem('dodge_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = finalScore;
+  gameOverScreen.classList.add('show');
+  
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  init();
+}
+
+let lastTimestamp = 0;
+function gameLoop(timestamp) {
+  update(timestamp);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  if (type === 'hit') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  }
+}
+
+// Controls
+function updateTarget(x, y) {
+  const rect = canvas.getBoundingClientRect();
+  player.targetX = x - rect.left;
+  player.targetY = y - rect.top;
+}
+
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  updateTarget(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (gameState === 'playing') {
+    updateTarget(e.touches[0].clientX, e.touches[0].clientY);
+  }
+}, { passive: false });
+
+document.addEventListener('mousemove', (e) => {
+  if (gameState === 'playing') {
+    updateTarget(e.clientX, e.clientY);
+  }
+});
+
+document.addEventListener('click', () => {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+  }
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const text = `Sobrevivi ${Math.floor(score / 60)} segundos em Dodge! ☄️`;
+  if (navigator.share) {
+    navigator.share({ title: 'Dodge', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado!');
+  }
+});
+
+gameLoop(0);
+
+  </script>
+</body>
+</html>

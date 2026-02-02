@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Neon Colors</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #ff00ff;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #ff00ff;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #0a0a1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Neon Colors</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Color Match Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('neon-colors_best') || '0');
+bestEl.textContent = best;
+
+const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
+const colorNames = ['red', 'blue', 'green', 'yellow'];
+
+const ball = {
+  x: 0,
+  y: 0,
+  radius: 20,
+  color: 0,
+  vy: 0,
+  gravity: 0.3,
+  jumpForce: -10
+};
+
+const ring = {
+  x: 0,
+  y: 0,
+  radius: 100,
+  thickness: 30,
+  rotation: 0,
+  rotationSpeed: 0.02
+};
+
+let obstacles = [];
+let obstacleY = 0;
+
+function init() {
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.vy = 0;
+  ball.color = Math.floor(Math.random() * 4);
+  
+  ring.x = canvas.width / 2;
+  ring.y = canvas.height / 2 - 150;
+  ring.rotation = 0;
+  ring.rotationSpeed = 0.02;
+  
+  obstacles = [];
+  obstacleY = ring.y - 250;
+  score = 0;
+  scoreEl.textContent = '0';
+  
+  generateObstacle();
+}
+
+function generateObstacle() {
+  const types = ['ring', 'bar', 'gate'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  
+  obstacles.push({
+    type,
+    y: obstacleY,
+    rotation: 0,
+    rotationSpeed: 0.02 + score * 0.001
+  });
+  
+  obstacleY -= 250;
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+  
+  // Ball physics
+  ball.vy += ball.gravity;
+  ball.y += ball.vy;
+  
+  // Camera follow (move world down when ball goes up)
+  if (ball.y < canvas.height / 2) {
+    const diff = canvas.height / 2 - ball.y;
+    ball.y = canvas.height / 2;
+    
+    ring.y += diff;
+    for (const obs of obstacles) {
+      obs.y += diff;
+    }
+    obstacleY += diff;
+    
+    score++;
+    scoreEl.textContent = score;
+    
+    // Increase difficulty
+    ring.rotationSpeed = 0.02 + score * 0.001;
+  }
+  
+  // Rotate ring
+  ring.rotation += ring.rotationSpeed;
+  
+  // Rotate obstacles
+  for (const obs of obstacles) {
+    obs.rotation += obs.rotationSpeed;
+  }
+  
+  // Check ring collision (must pass through matching color)
+  if (ball.y < ring.y + ring.thickness && ball.y > ring.y - ring.thickness) {
+    const angle = Math.atan2(ball.y - ring.y, ball.x - ring.x);
+    const normalizedAngle = ((angle - ring.rotation) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    
+    // Each quarter is a different color
+    const colorIndex = Math.floor(normalizedAngle / (Math.PI / 2)) % 4;
+    
+    if (colorIndex !== ball.color) {
+      // Check if actually touching the ring
+      const dist = Math.sqrt(Math.pow(ball.x - ring.x, 2) + Math.pow(ball.y - ring.y, 2));
+      if (dist > ring.radius - ring.thickness / 2 && dist < ring.radius + ring.thickness / 2) {
+        gameOver();
+        return;
+      }
+    }
+  }
+  
+  // Check obstacle collisions
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obs = obstacles[i];
+    
+    if (ball.y < obs.y + 30 && ball.y > obs.y - 30) {
+      if (obs.type === 'ring') {
+        // Similar to main ring but smaller
+        const dist = Math.sqrt(Math.pow(ball.x - canvas.width / 2, 2) + Math.pow(ball.y - obs.y, 2));
+        if (dist > 60 && dist < 90) {
+          const angle = Math.atan2(ball.y - obs.y, ball.x - canvas.width / 2);
+          const normalizedAngle = ((angle - obs.rotation) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+          const colorIndex = Math.floor(normalizedAngle / (Math.PI / 2)) % 4;
+          
+          if (colorIndex !== ball.color) {
+            gameOver();
+            return;
+          }
+        }
+      } else if (obs.type === 'bar') {
+        // Rotating bar with colored ends
+        const barLength = 120;
+        const angle = obs.rotation;
+        const leftX = canvas.width / 2 + Math.cos(angle) * barLength;
+        const rightX = canvas.width / 2 - Math.cos(angle) * barLength;
+        
+        // Simplified collision - just check if near center line
+        const dx = ball.x - canvas.width / 2;
+        const distToBar = Math.abs(Math.sin(angle) * dx);
+        
+        if (distToBar < ball.radius + 10) {
+          // Check which half of bar
+          const onLeft = Math.cos(angle) * (ball.x - canvas.width / 2) > 0;
+          const colorIndex = onLeft ? 0 : 2; // Red or green
+          
+          if (colorIndex !== ball.color) {
+            gameOver();
+            return;
+          }
+        }
+      }
+    }
+    
+    // Remove passed obstacles
+    if (obs.y > canvas.height + 100) {
+      obstacles.splice(i, 1);
+    }
+  }
+  
+  // Generate new obstacles
+  while (obstacles.length < 3) {
+    generateObstacle();
+  }
+  
+  // Move ring to follow camera
+  if (ring.y > canvas.height + 200) {
+    ring.y = obstacleY - 100;
+    // Change ball color when passing ring
+    ball.color = Math.floor(Math.random() * 4);
+    score += 5;
+    scoreEl.textContent = score;
+    playSound('pass');
+  }
+  
+  // Game over - fell off bottom
+  if (ball.y > canvas.height + 50) {
+    gameOver();
+  }
+}
+
+function draw() {
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw obstacles
+  for (const obs of obstacles) {
+    if (obs.type === 'ring') {
+      drawColorRing(canvas.width / 2, obs.y, 75, 20, obs.rotation);
+    } else if (obs.type === 'bar') {
+      ctx.save();
+      ctx.translate(canvas.width / 2, obs.y);
+      ctx.rotate(obs.rotation);
+      
+      ctx.fillStyle = colors[0];
+      ctx.fillRect(-120, -10, 120, 20);
+      ctx.fillStyle = colors[2];
+      ctx.fillRect(0, -10, 120, 20);
+      
+      ctx.restore();
+    }
+  }
+  
+  // Draw main ring
+  drawColorRing(ring.x, ring.y, ring.radius, ring.thickness, ring.rotation);
+  
+  // Draw ball
+  ctx.shadowColor = colors[ball.color];
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = colors[ball.color];
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  
+  // Color indicator at top
+  ctx.fillStyle = colors[ball.color];
+  ctx.beginPath();
+  ctx.arc(canvas.width / 2, 60, 15, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawColorRing(x, y, radius, thickness, rotation) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = colors[i];
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + thickness / 2, i * Math.PI / 2, (i + 1) * Math.PI / 2);
+    ctx.arc(0, 0, radius - thickness / 2, (i + 1) * Math.PI / 2, i * Math.PI / 2, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+  
+  ctx.restore();
+}
+
+function jump() {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  if (gameState === 'playing') {
+    ball.vy = ball.jumpForce;
+    playSound('jump');
+  }
+}
+
+function gameOver() {
+  gameState = 'over';
+  playSound('hit');
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('neon-colors_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = score;
+  gameOverScreen.classList.add('show');
+  
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  init();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'jump':
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      break;
+    case 'pass':
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      break;
+    case 'hit':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      break;
+  }
+  
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.3);
+}
+
+// Controls
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  jump();
+}, { passive: false });
+
+document.addEventListener('mousedown', jump);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') jump();
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const text = `Fiz ${score} pontos em Neon Colors! 🌈`;
+  if (navigator.share) {
+    navigator.share({ title: 'Neon Colors', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado!');
+  }
+});
+
+gameLoop();
+
+  </script>
+</body>
+</html>

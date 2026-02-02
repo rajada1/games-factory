@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Flappy Bird</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #e74c3c;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Flappy Bird</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // Flappy-style Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+// Responsive canvas
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Game state
+let gameState = 'start'; // start, playing, over
+let score = 0;
+let best = parseInt(localStorage.getItem('flappy-bird_best') || '0');
+bestEl.textContent = best;
+
+// Player
+const player = {
+  x: 80,
+  y: 0,
+  width: 40,
+  height: 30,
+  velocity: 0,
+  gravity: 0.5,
+  jumpForce: -10,
+  rotation: 0
+};
+
+// Pipes
+let pipes = [];
+const pipeWidth = 60;
+const pipeGap = 180;
+let pipeSpeed = 3;
+
+// Colors from theme
+const colors = {
+  player: '#e74c3c',
+  pipe: '#2ecc71',
+  pipeBorder: '#27ae60'
+};
+
+function init() {
+  player.y = canvas.height / 2;
+  player.velocity = 0;
+  player.rotation = 0;
+  pipes = [];
+  score = 0;
+  scoreEl.textContent = '0';
+  pipeSpeed = 3;
+}
+
+function spawnPipe() {
+  const minY = 100;
+  const maxY = canvas.height - pipeGap - 100;
+  const gapY = Math.random() * (maxY - minY) + minY;
+  
+  pipes.push({
+    x: canvas.width,
+    gapY: gapY,
+    passed: false
+  });
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+
+  // Player physics
+  player.velocity += player.gravity;
+  player.y += player.velocity;
+  player.rotation = Math.min(Math.max(player.velocity * 3, -30), 90);
+
+  // Spawn pipes
+  if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 250) {
+    spawnPipe();
+  }
+
+  // Update pipes
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    pipes[i].x -= pipeSpeed;
+
+    // Score
+    if (!pipes[i].passed && pipes[i].x + pipeWidth < player.x) {
+      pipes[i].passed = true;
+      score++;
+      scoreEl.textContent = score;
+      playSound('score');
+      
+      // Increase difficulty
+      if (score % 5 === 0) {
+        pipeSpeed += 0.2;
+      }
+    }
+
+    // Remove off-screen pipes
+    if (pipes[i].x + pipeWidth < 0) {
+      pipes.splice(i, 1);
+    }
+  }
+
+  // Collision detection
+  if (player.y < 0 || player.y + player.height > canvas.height) {
+    gameOver();
+    return;
+  }
+
+  for (const pipe of pipes) {
+    // Top pipe collision
+    if (player.x + player.width > pipe.x && 
+        player.x < pipe.x + pipeWidth &&
+        player.y < pipe.gapY) {
+      gameOver();
+      return;
+    }
+    // Bottom pipe collision
+    if (player.x + player.width > pipe.x && 
+        player.x < pipe.x + pipeWidth &&
+        player.y + player.height > pipe.gapY + pipeGap) {
+      gameOver();
+      return;
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw pipes
+  ctx.fillStyle = colors.pipe;
+  ctx.strokeStyle = colors.pipeBorder;
+  ctx.lineWidth = 3;
+  
+  for (const pipe of pipes) {
+    // Top pipe
+    ctx.fillRect(pipe.x, 0, pipeWidth, pipe.gapY);
+    ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.gapY);
+    
+    // Top pipe cap
+    ctx.fillRect(pipe.x - 5, pipe.gapY - 30, pipeWidth + 10, 30);
+    ctx.strokeRect(pipe.x - 5, pipe.gapY - 30, pipeWidth + 10, 30);
+    
+    // Bottom pipe
+    ctx.fillRect(pipe.x, pipe.gapY + pipeGap, pipeWidth, canvas.height - pipe.gapY - pipeGap);
+    ctx.strokeRect(pipe.x, pipe.gapY + pipeGap, pipeWidth, canvas.height - pipe.gapY - pipeGap);
+    
+    // Bottom pipe cap
+    ctx.fillRect(pipe.x - 5, pipe.gapY + pipeGap, pipeWidth + 10, 30);
+    ctx.strokeRect(pipe.x - 5, pipe.gapY + pipeGap, pipeWidth + 10, 30);
+  }
+
+  // Draw player
+  ctx.save();
+  ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+  ctx.rotate(player.rotation * Math.PI / 180);
+  
+  ctx.fillStyle = colors.player;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Eye
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(10, -5, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.arc(12, -5, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Beak
+  ctx.fillStyle = '#f39c12';
+  ctx.beginPath();
+  ctx.moveTo(player.width / 2, 0);
+  ctx.lineTo(player.width / 2 + 15, 5);
+  ctx.lineTo(player.width / 2, 10);
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function jump() {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+  } else if (gameState === 'playing') {
+    player.velocity = player.jumpForce;
+    playSound('jump');
+  }
+}
+
+function gameOver() {
+  gameState = 'over';
+  playSound('hit');
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('flappy-bird_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = score;
+  gameOverScreen.classList.add('show');
+  
+  // Vibrate on mobile
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  init();
+}
+
+// Sound effects (Web Audio API)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'jump':
+      oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.1);
+      break;
+    case 'score':
+      oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15);
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.15);
+      break;
+    case 'hit':
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.2);
+      break;
+  }
+}
+
+// Event listeners
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  jump();
+}, { passive: false });
+
+document.addEventListener('mousedown', jump);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') jump();
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const text = `Fiz ${score} pontos em Flappy Bird! 🎮`;
+  if (navigator.share) {
+    navigator.share({ title: 'Flappy Bird', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado para a área de transferência!');
+  }
+});
+
+// Start game loop
+init();
+gameLoop();
+
+  </script>
+</body>
+</html>

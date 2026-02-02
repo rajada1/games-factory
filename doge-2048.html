@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Doge 2048</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #game-container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .best-score {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    .game-over {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .game-over.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .game-over h1 {
+      color: white;
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    .game-over .final-score {
+      color: #c2a633;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: #c2a633;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background: transparent;
+      border: 2px solid white;
+    }
+    .start-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .start-screen h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .start-screen .tap-to-start {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .particles {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game"></canvas>
+    <div class="ui-overlay">
+      <div>
+        <div class="score" id="score">0</div>
+        <div class="best-score">Best: <span id="best">0</span></div>
+      </div>
+    </div>
+    <div class="start-screen" id="start-screen">
+      <h1>Doge 2048</h1>
+      <p class="tap-to-start">Toque para jogar</p>
+    </div>
+    <div class="game-over" id="game-over">
+      <h1>Game Over</h1>
+      <div class="final-score" id="final-score">0</div>
+      <button class="btn" id="play-again">Jogar Novamente</button>
+      <button class="btn btn-secondary" id="share">Compartilhar</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+  <script>
+    // 2048 Game Logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const finalScoreEl = document.getElementById('final-score');
+
+function resize() {
+  const container = document.getElementById('game-container');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let gameState = 'start';
+let score = 0;
+let best = parseInt(localStorage.getItem('doge-2048_best') || '0');
+bestEl.textContent = best;
+
+const gridSize = 4;
+let grid = [];
+let previousGrid = [];
+let animatingTiles = [];
+
+const tileColors = {
+  2: { bg: '#eee4da', text: '#776e65' },
+  4: { bg: '#ede0c8', text: '#776e65' },
+  8: { bg: '#f2b179', text: '#f9f6f2' },
+  16: { bg: '#f59563', text: '#f9f6f2' },
+  32: { bg: '#f67c5f', text: '#f9f6f2' },
+  64: { bg: '#f65e3b', text: '#f9f6f2' },
+  128: { bg: '#edcf72', text: '#f9f6f2' },
+  256: { bg: '#edcc61', text: '#f9f6f2' },
+  512: { bg: '#edc850', text: '#f9f6f2' },
+  1024: { bg: '#edc53f', text: '#f9f6f2' },
+  2048: { bg: '#edc22e', text: '#f9f6f2' }
+};
+
+function init() {
+  grid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+  score = 0;
+  scoreEl.textContent = '0';
+  
+  addRandomTile();
+  addRandomTile();
+}
+
+function addRandomTile() {
+  const emptyCells = [];
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      if (grid[r][c] === 0) {
+        emptyCells.push({ r, c });
+      }
+    }
+  }
+  
+  if (emptyCells.length === 0) return false;
+  
+  const cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+  grid[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
+  
+  // Animation
+  animatingTiles.push({
+    r: cell.r,
+    c: cell.c,
+    scale: 0,
+    targetScale: 1
+  });
+  
+  return true;
+}
+
+function slide(row) {
+  const filtered = row.filter(val => val !== 0);
+  const missing = gridSize - filtered.length;
+  return Array(missing).fill(0).concat(filtered);
+}
+
+function combine(row) {
+  for (let i = gridSize - 1; i > 0; i--) {
+    if (row[i] === row[i - 1] && row[i] !== 0) {
+      row[i] *= 2;
+      score += row[i];
+      row[i - 1] = 0;
+      playSound('merge');
+    }
+  }
+  return row;
+}
+
+function moveRight() {
+  let moved = false;
+  for (let r = 0; r < gridSize; r++) {
+    const original = [...grid[r]];
+    let row = slide(grid[r]);
+    row = combine(row);
+    row = slide(row);
+    grid[r] = row;
+    
+    if (original.join(',') !== row.join(',')) {
+      moved = true;
+    }
+  }
+  return moved;
+}
+
+function rotateGrid() {
+  const newGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      newGrid[c][gridSize - 1 - r] = grid[r][c];
+    }
+  }
+  grid = newGrid;
+}
+
+function move(direction) {
+  if (gameState !== 'playing') return;
+  
+  previousGrid = grid.map(row => [...row]);
+  
+  // Rotate grid to always use moveRight logic
+  const rotations = { right: 0, down: 1, left: 2, up: 3 };
+  
+  for (let i = 0; i < rotations[direction]; i++) {
+    rotateGrid();
+  }
+  
+  const moved = moveRight();
+  
+  // Rotate back
+  for (let i = 0; i < (4 - rotations[direction]) % 4; i++) {
+    rotateGrid();
+  }
+  
+  if (moved) {
+    scoreEl.textContent = score;
+    addRandomTile();
+    playSound('slide');
+    
+    if (!canMove()) {
+      gameOver();
+    }
+  }
+}
+
+function canMove() {
+  // Check for empty cells
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      if (grid[r][c] === 0) return true;
+    }
+  }
+  
+  // Check for possible merges
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      if (c < gridSize - 1 && grid[r][c] === grid[r][c + 1]) return true;
+      if (r < gridSize - 1 && grid[r][c] === grid[r + 1][c]) return true;
+    }
+  }
+  
+  return false;
+}
+
+function update() {
+  // Animate tiles
+  for (let i = animatingTiles.length - 1; i >= 0; i--) {
+    const tile = animatingTiles[i];
+    tile.scale += (tile.targetScale - tile.scale) * 0.3;
+    
+    if (Math.abs(tile.scale - tile.targetScale) < 0.01) {
+      animatingTiles.splice(i, 1);
+    }
+  }
+}
+
+function draw() {
+  const padding = 10;
+  const gridWidth = Math.min(canvas.width - 40, 400);
+  const cellSize = (gridWidth - padding * (gridSize + 1)) / gridSize;
+  const startX = (canvas.width - gridWidth) / 2;
+  const startY = (canvas.height - gridWidth) / 2;
+  
+  // Background
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Grid background
+  ctx.fillStyle = '#bbada0';
+  ctx.beginPath();
+  ctx.roundRect(startX, startY, gridWidth, gridWidth, 6);
+  ctx.fill();
+  
+  // Empty cells
+  ctx.fillStyle = 'rgba(238, 228, 218, 0.35)';
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const x = startX + padding + c * (cellSize + padding);
+      const y = startY + padding + r * (cellSize + padding);
+      ctx.beginPath();
+      ctx.roundRect(x, y, cellSize, cellSize, 3);
+      ctx.fill();
+    }
+  }
+  
+  // Tiles
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const value = grid[r][c];
+      if (value === 0) continue;
+      
+      const x = startX + padding + c * (cellSize + padding);
+      const y = startY + padding + r * (cellSize + padding);
+      
+      // Find animation
+      const anim = animatingTiles.find(t => t.r === r && t.c === c);
+      const scale = anim ? anim.scale : 1;
+      
+      ctx.save();
+      ctx.translate(x + cellSize / 2, y + cellSize / 2);
+      ctx.scale(scale, scale);
+      
+      const colors = tileColors[value] || { bg: '#3c3a32', text: '#f9f6f2' };
+      
+      // Tile background
+      ctx.fillStyle = colors.bg;
+      ctx.beginPath();
+      ctx.roundRect(-cellSize / 2, -cellSize / 2, cellSize, cellSize, 3);
+      ctx.fill();
+      
+      // Tile text
+      ctx.fillStyle = colors.text;
+      ctx.font = `bold ${value > 999 ? 28 : value > 99 ? 36 : 44}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(value.toString(), 0, 0);
+      
+      ctx.restore();
+    }
+  }
+}
+
+function gameOver() {
+  gameState = 'over';
+  playSound('gameOver');
+  
+  if (score > best) {
+    best = score;
+    localStorage.setItem('doge-2048_best', best);
+    bestEl.textContent = best;
+  }
+  
+  finalScoreEl.textContent = score;
+  gameOverScreen.classList.add('show');
+}
+
+function restart() {
+  gameOverScreen.classList.remove('show');
+  gameState = 'playing';
+  init();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Sound
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'slide':
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      break;
+    case 'merge':
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      break;
+    case 'gameOver':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      break;
+  }
+  
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.4);
+}
+
+// Controls
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', (e) => {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (gameState !== 'playing') return;
+  
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  
+  if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;
+  
+  if (Math.abs(dx) > Math.abs(dy)) {
+    move(dx > 0 ? 'right' : 'left');
+  } else {
+    move(dy > 0 ? 'down' : 'up');
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (gameState === 'start') {
+    startScreen.style.display = 'none';
+    gameState = 'playing';
+    init();
+    return;
+  }
+  
+  const keyMap = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    KeyW: 'up',
+    KeyS: 'down',
+    KeyA: 'left',
+    KeyD: 'right'
+  };
+  
+  if (keyMap[e.code]) {
+    e.preventDefault();
+    move(keyMap[e.code]);
+  }
+});
+
+document.getElementById('play-again').addEventListener('click', restart);
+document.getElementById('share').addEventListener('click', () => {
+  const maxTile = Math.max(...grid.flat());
+  const text = `Cheguei em ${maxTile} com ${score} pontos em Doge 2048! 🔢`;
+  if (navigator.share) {
+    navigator.share({ title: 'Doge 2048', text });
+  } else {
+    navigator.clipboard.writeText(text);
+    alert('Copiado!');
+  }
+});
+
+gameLoop();
+
+  </script>
+</body>
+</html>
